@@ -24,7 +24,7 @@ func generateShortCode() string {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 	//step4: avoid duplicate
 	for {
-		b := make([]byte, 10) // length of short code
+		b := make([]byte, 5) // length of short code
 		for i := range b {
 			b[i] = charset[randGen.Intn(len(charset))]
 		}
@@ -177,11 +177,12 @@ func main() {
 		}
 
 
+		shortURL := "cplshort.vercel.app/" + shortCode
+
 		c.JSON(200, gin.H{
-			"original_url":   req.URL,
-			"functional_url": "https://cplshort.vercel.app/" + shortCode,
-			"display_url":    "cpl:" + shortCode, // For showing to users
-			"short_code":     shortCode,
+			"original_url": req.URL,
+			"short_url":    shortURL,
+			"short_code":   shortCode,
 		})
 	})
 
