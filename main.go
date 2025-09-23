@@ -61,42 +61,43 @@ func initDB() *sql.DB {
 }
 
 func CORSMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Get allowed origins from environment variable or use defaults
-		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
-		if allowedOrigins == "" {
-			allowedOrigins = "http://localhost:5173,https://cplshort.vercel.app/"
-		}
-		
-		origins := strings.Split(allowedOrigins, ",")
-		requestOrigin := c.Request.Header.Get("Origin")
-		
-		// Check if the request origin is allowed
-		allowed := false
-		for _, origin := range origins {
-			if origin == "*" || origin == requestOrigin {
-				allowed = true
-				c.Header("Access-Control-Allow-Origin", requestOrigin)
-				break
-			}
-		}
-		
-		// If no specific match, use the first origin or request origin
-		if !allowed && len(origins) > 0 {
-			c.Header("Access-Control-Allow-Origin", origins[0])
-		}
-		
-		c.Header("Access-Control-Allow-Credentials", "true")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Header("Access-Control-Allow-Methods", "POST, HEAD, PATCH, OPTIONS, GET, PUT, DELETE")
-		
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		
-		c.Next()
-	}
+    return func(c *gin.Context) {
+        origin := c.Request.Header.Get("Origin")
+        
+        // Allow specific origins or all for testing
+        allowedOrigins := []string{
+            "https://cplshort.vercel.app",
+            "http://localhost:5173", 
+            "http://localhost:8080",
+        }
+        
+        allowed := false
+        for _, o := range allowedOrigins {
+            if o == origin || o == "*" {
+                allowed = true
+                break
+            }
+        }
+        
+        if allowed {
+            c.Header("Access-Control-Allow-Origin", origin)
+        } else if len(allowedOrigins) > 0 {
+            c.Header("Access-Control-Allow-Origin", allowedOrigins[0])
+        } else {
+            c.Header("Access-Control-Allow-Origin", "*")
+        }
+        
+        c.Header("Access-Control-Allow-Credentials", "true")
+        c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Accept, Origin, Cache-Control, X-Requested-With")
+        
+        if c.Request.Method == "OPTIONS" {
+            c.AbortWithStatus(204)
+            return
+        }
+        
+        c.Next()
+    }
 }
 
 // Simple CORS middleware alternative (uncomment if you want to allow all origins)
