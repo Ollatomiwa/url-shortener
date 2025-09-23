@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
+	"strings"
 	"time"
 	"github.com/gin-gonic/gin"
     _ "modernc.org/sqlite" // SQLite driver
@@ -15,8 +17,6 @@ var urlStore = make(map[string]string)
 
 //step4: global random generator
 var randGen = rand.New(rand.NewSource(time.Now().UnixNano()))
-
-
 
 //step4: helper:  generate a random short code (6 characters)
 func generateShortCode() string {
@@ -29,10 +29,8 @@ func generateShortCode() string {
 		}
 		shortCode := string(b)
 		if _, exists := urlStore[shortCode]; !exists {
-
 			return shortCode // return only if unique
 		}
-
 	}
 }
 
@@ -43,7 +41,13 @@ type ShortenRequest struct{
 
 //step6: initialize the database
 func initDB() *sql.DB {
-	db, err := sql.Open("sqlite", "file:urlshortener.db? cache=shared")
+	// Use environment variable for database path or default
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "file:urlshortener.db?cache=shared"
+	}
+	
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		log.Fatal("Failed to open database:", err)
 	}
@@ -55,12 +59,36 @@ func initDB() *sql.DB {
 	}
 	return db
 }
+
 func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
+		// Get allowed origins from environment variable or use defaults
+		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+		if allowedOrigins == "" {
+			allowedOrigins = "http://localhost:5173,https://cplshort.vercel.app/"
+		}
+		
+		origins := strings.Split(allowedOrigins, ",")
+		requestOrigin := c.Request.Header.Get("Origin")
+		
+		// Check if the request origin is allowed
+		allowed := false
+		for _, origin := range origins {
+			if origin == "*" || origin == requestOrigin {
+				allowed = true
+				c.Header("Access-Control-Allow-Origin", requestOrigin)
+				break
+			}
+		}
+		
+		// If no specific match, use the first origin or request origin
+		if !allowed && len(origins) > 0 {
+			c.Header("Access-Control-Allow-Origin", origins[0])
+		}
+		
 		c.Header("Access-Control-Allow-Credentials", "true")
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Header("Access-Control-Allow-Methods", "POST, HEAD, PATCH, OPTIONS, GET, PUT")
+		c.Header("Access-Control-Allow-Methods", "POST, HEAD, PATCH, OPTIONS, GET, PUT, DELETE")
 		
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
@@ -71,69 +99,149 @@ func CORSMiddleware() gin.HandlerFunc {
 	}
 }
 
-func main () {
+// Simple CORS middleware alternative (uncomment if you want to allow all origins)
+func SimpleCORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, Origin")
+		
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		
+		c.Next()
+	}
+}
+
+func main() {
+	// Get port from environment variable (for Railway/Render deployment)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
 	db := initDB() //step6: Initialize database
-	
 	defer db.Close() //step6: Close DB connection
-	
 
 	// step1: initialize Gin Router (with default middleware: Logger and Recovery)
 	r := gin.Default()
 
+	// Use CORS middleware - CHOOSE ONE OF THE FOLLOWING:
 
-	// Use CORS middleware
+	// Option 1: Use the configurable CORS middleware (recommended for production)
 	r.Use(CORSMiddleware())
 	
+	// Option 2: Uncomment below to allow all origins (for testing)
+	// r.Use(SimpleCORSMiddleware())
+	
 	//step1: define a basic route
-	r.GET("/", func (c *gin.Context) {
-		c.JSON(200, gin.H{"message": "Welcome to the URL shortener",})
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{"message": "Welcome to the URL shortener API"})
+	})
+
+	// Health check endpoint
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "healthy", "timestamp": time.Now()})
 	})
 
 	//step2: adding a new endpoint to shorten a url 
-	r.POST("/shorten", func (c *gin.Context)  {
+	r.POST("/shorten", func(c *gin.Context) {
 		//step3: updating /shorten handler
 		var req ShortenRequest
-		if err := c.ShouldBindJSON(&req);
-		err != nil {
+		if err := c.ShouldBindJSON(&req); err != nil {
 			fmt.Println("Binding error:", err)
-			 c.JSON(400, gin.H{"error": "Invalid Request Body"})
-		return
+			c.JSON(400, gin.H{"error": "Invalid Request Body: " + err.Error()})
+			return
 		} 
-		fmt.Println("Received URL:", req.URL) // Debug 2
+		fmt.Println("Received URL:", req.URL)
 
-		//step4: modify to store the url and return the short code
-		shortCode := generateShortCode() 
-		//step6: Replace the in-memory map with db operations
-		_, err := db.Exec("INSERT INTO urls(short_code, original_url) VALUES (?, ?)", shortCode, req.URL,)
-		if err != nil {
-			c.JSON(500, gin.H{"eror": "failed to save URL"})
+		// Validate URL format
+		if !strings.HasPrefix(req.URL, "http://") && !strings.HasPrefix(req.URL, "https://") {
+			c.JSON(400, gin.H{"error": "URL must start with http:// or https://"})
 			return
 		}
 
-		c.JSON(200, gin.H{"original_url": req.URL, "short_url": shortCode + ".cpl", }) //full short url
+		//step4: modify to store the url and return the short code
+		shortCode := generateShortCode() 
+		
+		//step6: Replace the in-memory map with db operations
+		_, err := db.Exec("INSERT INTO urls(short_code, original_url) VALUES (?, ?)", shortCode, req.URL)
+		if err != nil {
+			fmt.Println("Database error:", err)
+			c.JSON(500, gin.H{"error": "Failed to save URL: " + err.Error()})
+			return
+		}
+
+		// Get base URL for the short link
+		baseURL := os.Getenv("BASE_URL")
+		if baseURL == "" {
+			baseURL = "http://localhost:" + port
+		}
+		
+		shortURL := fmt.Sprintf("%s/%s", baseURL, shortCode)
+		
+		c.JSON(200, gin.H{
+			"original_url": req.URL, 
+			"short_url": shortURL,
+			"short_code": shortCode,
+		})
 	})
 	
 	//step4: adding a debug endpoint to view all mappings
 	r.GET("/debug", func(c *gin.Context) {
+		rows, err := db.Query("SELECT short_code, original_url FROM urls ORDER BY created_at DESC LIMIT 100")
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to query URLs"})
+			return
+		}
+		defer rows.Close()
+
+		urls := make(map[string]string)
+		for rows.Next() {
+			var shortCode, originalURL string
+			if err := rows.Scan(&shortCode, &originalURL); err != nil {
+				continue
+			}
+			urls[shortCode] = originalURL
+		}
+
+		var count int
+		db.QueryRow("SELECT COUNT(*) FROM urls").Scan(&count)
+
 		c.JSON(200, gin.H{
-			"count":    len(urlStore),
-			"mappings": urlStore,
+			"count":    count,
+			"mappings": urls,
 		})
 	})
 
 	//step4: adding redirection endpoint
 	r.GET("/:shortCode", func(c *gin.Context) {
-		shortCode := c.Param("shortCode") //step6: modify the GET /:shortCode handler to query the db
+		shortCode := c.Param("shortCode")
+		
+		// Remove .cpl extension if present
+		shortCode = strings.TrimSuffix(shortCode, ".cpl")
+		
 		var originalURL string
-		err := db.QueryRow("SELECT original_url FROM urls WHERE short_code = ?", shortCode,).Scan(&originalURL)
-		if err == sql.ErrNoRows {c.JSON(404, gin.H{"error":"Short URL not found"})
-		return
-	} else if err !=nil {c.JSON(500, gin.H{"error": "Database Error"})
-		return
-	}
+		err := db.QueryRow("SELECT original_url FROM urls WHERE short_code = ?", shortCode).Scan(&originalURL)
+		if err == sql.ErrNoRows {
+			c.JSON(404, gin.H{"error": "Short URL not found"})
+			return
+		} else if err != nil {
+			c.JSON(500, gin.H{"error": "Database Error: " + err.Error()})
+			return
+		}
+		
 		// redirect to the original url
 		c.Redirect(302, originalURL)
 	})
-	//step1: Running the server on Port 8080
-	r.Run(":8080")
+	
+	//step1: Running the server on Port
+	log.Printf("Server starting on port %s", port)
+	log.Printf("Allowed origins: %s", os.Getenv("ALLOWED_ORIGINS"))
+	
+	if err := r.Run(":" + port); err != nil {
+		log.Fatal("Failed to start server:", err)
+	}
 }
