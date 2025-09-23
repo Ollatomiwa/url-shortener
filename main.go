@@ -8,17 +8,18 @@ import (
 	"os"
 	"strings"
 	"time"
+
 	"github.com/gin-gonic/gin"
-    _ "modernc.org/sqlite" // SQLite driver
+	_ "modernc.org/sqlite" // SQLite driver
 )
 
-//step4: storage: map short codes to original url
+// step4: storage: map short codes to original url
 var urlStore = make(map[string]string)
 
-//step4: global random generator
+// step4: global random generator
 var randGen = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-//step4: helper:  generate a random short code (6 characters)
+// step4: helper:  generate a random short code (6 characters)
 func generateShortCode() string {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 	//step4: avoid duplicate
@@ -34,24 +35,24 @@ func generateShortCode() string {
 	}
 }
 
-//step3: define a struct for the request
-type ShortenRequest struct{
-	URL string `json:"url" binding:"required"` 
+// step3: define a struct for the request
+type ShortenRequest struct {
+	URL string `json:"url" binding:"required"`
 }
 
-//step6: initialize the database
+// step6: initialize the database
 func initDB() *sql.DB {
 	// Use environment variable for database path or default
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
 		dbPath = "file:urlshortener.db?cache=shared"
 	}
-	
+
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		log.Fatal("Failed to open database:", err)
 	}
-	
+
 	// Create the table if it doesn't exist
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS urls (short_code TEXT PRIMARY KEY, original_url TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`)
 	if err != nil {
@@ -61,43 +62,43 @@ func initDB() *sql.DB {
 }
 
 func CORSMiddleware() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        origin := c.Request.Header.Get("Origin")
-        
-        // Allow specific origins or all for testing
-        allowedOrigins := []string{
-            "https://cplshort.vercel.app",
-            "http://localhost:5173", 
-            "http://localhost:8080",
-        }
-        
-        allowed := false
-        for _, o := range allowedOrigins {
-            if o == origin || o == "*" {
-                allowed = true
-                break
-            }
-        }
-        
-        if allowed {
-            c.Header("Access-Control-Allow-Origin", origin)
-        } else if len(allowedOrigins) > 0 {
-            c.Header("Access-Control-Allow-Origin", allowedOrigins[0])
-        } else {
-            c.Header("Access-Control-Allow-Origin", "*")
-        }
-        
-        c.Header("Access-Control-Allow-Credentials", "true")
-        c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Accept, Origin, Cache-Control, X-Requested-With")
-        
-        if c.Request.Method == "OPTIONS" {
-            c.AbortWithStatus(204)
-            return
-        }
-        
-        c.Next()
-    }
+	return func(c *gin.Context) {
+		origin := c.Request.Header.Get("Origin")
+
+		// Allow specific origins or all for testing
+		allowedOrigins := []string{
+			"https://cplshort.vercel.app",
+			"http://localhost:5173",
+			"http://localhost:8080",
+		}
+
+		allowed := false
+		for _, o := range allowedOrigins {
+			if o == origin || o == "*" {
+				allowed = true
+				break
+			}
+		}
+
+		if allowed {
+			c.Header("Access-Control-Allow-Origin", origin)
+		} else if len(allowedOrigins) > 0 {
+			c.Header("Access-Control-Allow-Origin", allowedOrigins[0])
+		} else {
+			c.Header("Access-Control-Allow-Origin", "*")
+		}
+
+		c.Header("Access-Control-Allow-Credentials", "true")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Accept, Origin, Cache-Control, X-Requested-With")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	}
 }
 
 // Simple CORS middleware alternative (uncomment if you want to allow all origins)
@@ -106,12 +107,12 @@ func SimpleCORSMiddleware() gin.HandlerFunc {
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, Origin")
-		
+
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return
 		}
-		
+
 		c.Next()
 	}
 }
@@ -123,7 +124,7 @@ func main() {
 		port = "8080"
 	}
 
-	db := initDB() //step6: Initialize database
+	db := initDB()   //step6: Initialize database
 	defer db.Close() //step6: Close DB connection
 
 	// step1: initialize Gin Router (with default middleware: Logger and Recovery)
@@ -133,10 +134,10 @@ func main() {
 
 	// Option 1: Use the configurable CORS middleware (recommended for production)
 	r.Use(CORSMiddleware())
-	
+
 	// Option 2: Uncomment below to allow all origins (for testing)
 	// r.Use(SimpleCORSMiddleware())
-	
+
 	//step1: define a basic route
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "Welcome to the URL shortener API"})
@@ -147,7 +148,7 @@ func main() {
 		c.JSON(200, gin.H{"status": "healthy", "timestamp": time.Now()})
 	})
 
-	//step2: adding a new endpoint to shorten a url 
+	//step2: adding a new endpoint to shorten a url
 	r.POST("/shorten", func(c *gin.Context) {
 		//step3: updating /shorten handler
 		var req ShortenRequest
@@ -155,7 +156,7 @@ func main() {
 			fmt.Println("Binding error:", err)
 			c.JSON(400, gin.H{"error": "Invalid Request Body: " + err.Error()})
 			return
-		} 
+		}
 		fmt.Println("Received URL:", req.URL)
 
 		// Validate URL format
@@ -165,8 +166,8 @@ func main() {
 		}
 
 		//step4: modify to store the url and return the short code
-		shortCode := generateShortCode() 
-		
+		shortCode := generateShortCode()
+
 		//step6: Replace the in-memory map with db operations
 		_, err := db.Exec("INSERT INTO urls(short_code, original_url) VALUES (?, ?)", shortCode, req.URL)
 		if err != nil {
@@ -178,18 +179,18 @@ func main() {
 		// Get base URL for the short link
 		baseURL := os.Getenv("BASE_URL")
 		if baseURL == "" {
-			baseURL = "http://localhost:" + port
+			baseURL = port + ".cpl"
 		}
-		
+
 		shortURL := fmt.Sprintf("%s/%s", baseURL, shortCode)
-		
+
 		c.JSON(200, gin.H{
-			"original_url": req.URL, 
-			"short_url": shortURL,
-			"short_code": shortCode,
+			"original_url": req.URL,
+			"short_url":    shortURL,
+			"short_code":   shortCode,
 		})
 	})
-	
+
 	//step4: adding a debug endpoint to view all mappings
 	r.GET("/debug", func(c *gin.Context) {
 		rows, err := db.Query("SELECT short_code, original_url FROM urls ORDER BY created_at DESC LIMIT 100")
@@ -220,10 +221,10 @@ func main() {
 	//step4: adding redirection endpoint
 	r.GET("/:shortCode", func(c *gin.Context) {
 		shortCode := c.Param("shortCode")
-		
+
 		// Remove .cpl extension if present
 		shortCode = strings.TrimSuffix(shortCode, ".cpl")
-		
+
 		var originalURL string
 		err := db.QueryRow("SELECT original_url FROM urls WHERE short_code = ?", shortCode).Scan(&originalURL)
 		if err == sql.ErrNoRows {
@@ -233,15 +234,15 @@ func main() {
 			c.JSON(500, gin.H{"error": "Database Error: " + err.Error()})
 			return
 		}
-		
+
 		// redirect to the original url
 		c.Redirect(302, originalURL)
 	})
-	
+
 	//step1: Running the server on Port
 	log.Printf("Server starting on port %s", port)
 	log.Printf("Allowed origins: %s", os.Getenv("ALLOWED_ORIGINS"))
-	
+
 	if err := r.Run(":" + port); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
