@@ -23,7 +23,7 @@ func generateShortCode() string {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 	//step4: avoid duplicate
 	for {
-		b := make([]byte, 6)
+		b := make([]byte, 10) // length of short code
 		for i := range b {
 			b[i] = charset[randGen.Intn(len(charset))]
 		}
@@ -55,6 +55,22 @@ func initDB() *sql.DB {
 	}
 	return db
 }
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "http://localhost:5173")
+		c.Header("Access-Control-Allow-Credentials", "true")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Header("Access-Control-Allow-Methods", "POST, HEAD, PATCH, OPTIONS, GET, PUT")
+		
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		
+		c.Next()
+	}
+}
+
 func main () {
 	db := initDB() //step6: Initialize database
 	
@@ -63,6 +79,10 @@ func main () {
 
 	// step1: initialize Gin Router (with default middleware: Logger and Recovery)
 	r := gin.Default()
+
+
+	// Use CORS middleware
+	r.Use(CORSMiddleware())
 	
 	//step1: define a basic route
 	r.GET("/", func (c *gin.Context) {
@@ -90,7 +110,7 @@ func main () {
 			return
 		}
 
-		c.JSON(200, gin.H{"original_url": req.URL, "short_url": "http://localhost:8080/" + shortCode, }) //full short url
+		c.JSON(200, gin.H{"original_url": req.URL, "short_url": shortCode + ".cpl", }) //full short url
 	})
 	
 	//step4: adding a debug endpoint to view all mappings
