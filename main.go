@@ -177,12 +177,11 @@ func main() {
 		}
 
 
-		shortURL := fmt.Sprintf("%s.cpl", shortCode)
-
 		c.JSON(200, gin.H{
-			"original_url": req.URL,
-			"short_url":    shortURL,
-			"short_code":   shortCode,
+			"original_url":   req.URL,
+			"functional_url": "https://cplshort.vercel.app/" + shortCode,
+			"display_url":    "cpl:" + shortCode, // For showing to users
+			"short_code":     shortCode,
 		})
 	})
 
