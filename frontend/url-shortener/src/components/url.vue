@@ -16,7 +16,7 @@
         <!-- Input Section -->
         <div class="mb-6">
           <label for="url-input" class="block text-sm font-medium text-gray-700 mb-2">
-            Enter your long URL
+            Enter or Paste your long URL
           </label>
           <div class="flex flex-col sm:flex-row gap-3">
             <input
@@ -24,14 +24,14 @@
               v-model="longUrl"
               type="url"
               placeholder="https://example.com/very-long-url-path"
-              class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200"
+              class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
               :class="{ 'border-red-300': error }"
               @keypress.enter="shortenUrl"
             />
             <button
               @click="shortenUrl"
               :disabled="loading || !longUrl"
-              class="px-6 py-3 bg-primary-500 text-white font-medium rounded-lg hover:bg-primary-600 active:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 min-w-[120px]"
+              class="px-6 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-primary-600 active:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 min-w-[120px]"
             >
               <span v-if="loading" class="animate-spin">⟳</span>
               {{ loading ? 'Shortening...' : 'Shorten' }}

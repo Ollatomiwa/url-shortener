@@ -12,6 +12,19 @@ export default defineConfig({
     vueDevTools(),
     tailwindcss(),
   ],
+content: ["./index.html", "./src/**/*.{vue,js,ts,jsx,tsx}"],
+  theme: {
+    extend: {
+      colors: {
+        primary: {
+          50: '#f0f9ff',
+          500: '#3b82f6',
+          600: '#2563eb',
+          700: '#1d4ed8',
+        }
+      }
+    },
+  },
 
 server: {
     port: 5173,
