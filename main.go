@@ -177,7 +177,7 @@ func main() {
 		}
 
 
-		shortURL := "cpl." + shortCode 
+		shortURL := fmt.Sprintf("%s.cpl", shortCode)
 
 		c.JSON(200, gin.H{
 			"original_url": req.URL,
