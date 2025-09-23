@@ -123,7 +123,7 @@ const loading = ref(false)
 const copied = ref(false)
 const recentUrls = ref([])
 
-const API_BASE = 'http://localhost:8080'
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
 // Validate URL format
 const isValidUrl = (string) => {
