@@ -176,7 +176,7 @@ func main() {
 			return
 		}
 
-		shortURL := "https://shrt.up.railway.app" + shortCode
+		shortURL := "https://shrt.up.railway.app/" + shortCode
 
 		c.JSON(200, gin.H{
 			"original_url": req.URL,
