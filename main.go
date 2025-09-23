@@ -179,10 +179,10 @@ func main() {
 		// Get base URL for the short link
 		baseURL := os.Getenv("BASE_URL")
 		if baseURL == "" {
-			baseURL = port + ".cpl"
+			baseURL = ".cpl"
 		}
 
-		shortURL := fmt.Sprintf("%s/%s", baseURL, shortCode)
+		shortURL := fmt.Sprintf("%s/%s", shortCode,  baseURL)
 
 		c.JSON(200, gin.H{
 			"original_url": req.URL,
