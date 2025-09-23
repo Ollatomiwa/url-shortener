@@ -177,7 +177,7 @@ func main() {
 		}
 
 
-		shortURL := shortCode + ".cpl"
+		shortURL := "cpl." + shortCode 
 
 		c.JSON(200, gin.H{
 			"original_url": req.URL,
