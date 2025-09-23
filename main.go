@@ -21,7 +21,7 @@ var randGen = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // step4: helper:  generate a random short code (6 characters)
 func generateShortCode() string {
-	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+	const charset = "abcdefghijklmnopqrstuvwxyz0123456789@-"
 	//step4: avoid duplicate
 	for {
 		b := make([]byte, 5) // length of short code
@@ -176,8 +176,7 @@ func main() {
 			return
 		}
 
-
-		shortURL := "shrt.up.railway.app/" + shortCode
+		shortURL := "https://shrt.up.railway.app" + shortCode
 
 		c.JSON(200, gin.H{
 			"original_url": req.URL,
