@@ -23,7 +23,7 @@
               id="url-input"
               v-model="longUrl"
               type="url"
-              placeholder="https://example.com/very-long-url-path"
+              placeholder="https://..."
               class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
               :class="{ 'border-red-300': error }"
               @keypress.enter="shortenUrl"
