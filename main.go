@@ -177,7 +177,7 @@ func main() {
 		}
 
 
-		shortURL := "cplshort.vercel.app/" + shortCode
+		shortURL := "https://computlife.com.ng/" + shortCode
 
 		c.JSON(200, gin.H{
 			"original_url": req.URL,
