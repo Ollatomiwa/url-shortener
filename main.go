@@ -101,21 +101,6 @@ func CORSMiddleware() gin.HandlerFunc {
 	}
 }
 
-// Simple CORS middleware alternative (uncomment if you want to allow all origins)
-func SimpleCORSMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, Origin")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	}
-}
 
 func main() {
 	// Get port from environment variable (for Railway/Render deployment)
@@ -138,15 +123,7 @@ func main() {
 	// Option 2: Uncomment below to allow all origins (for testing)
 	// r.Use(SimpleCORSMiddleware())
 
-	//step1: define a basic route
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "Welcome to the URL shortener API"})
-	})
-
-	// Health check endpoint
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "healthy", "timestamp": time.Now()})
-	})
+	
 
 	//step2: adding a new endpoint to shorten a url
 	r.POST("/shorten", func(c *gin.Context) {
@@ -185,32 +162,6 @@ func main() {
 		})
 	})
 
-	//step4: adding a debug endpoint to view all mappings
-	r.GET("/debug", func(c *gin.Context) {
-		rows, err := db.Query("SELECT short_code, original_url FROM urls ORDER BY created_at DESC LIMIT 100")
-		if err != nil {
-			c.JSON(500, gin.H{"error": "Failed to query URLs"})
-			return
-		}
-		defer rows.Close()
-
-		urls := make(map[string]string)
-		for rows.Next() {
-			var shortCode, originalURL string
-			if err := rows.Scan(&shortCode, &originalURL); err != nil {
-				continue
-			}
-			urls[shortCode] = originalURL
-		}
-
-		var count int
-		db.QueryRow("SELECT COUNT(*) FROM urls").Scan(&count)
-
-		c.JSON(200, gin.H{
-			"count":    count,
-			"mappings": urls,
-		})
-	})
 
 	//step4: adding redirection endpoint
 	r.GET("/:shortCode", func(c *gin.Context) {
