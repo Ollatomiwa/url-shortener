@@ -102,7 +102,7 @@
             </div>
             <button
               @click="copyRecentUrl(item.short)"
-              class="ml-2 px-3 py-3 text-xs bg-gray-200 hover:bg-gray-300 rounded transition-colors"
+              class="ml-8 px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded transition-colors"
             >
               Copy
             </button>
